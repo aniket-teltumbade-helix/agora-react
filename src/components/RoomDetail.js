@@ -7,74 +7,8 @@ import AgoraRTC from 'agora-rtc-sdk'
 import { Spinner } from 'react-bootstrap'
 import AgoraRTM from 'agora-rtm-sdk'
 import { recordAcquire, recordQuery, recordStart, recordStop } from '../helper'
-// const useRecorder = () => {
-//   const [audioURL, setAudioURL] = useState('')
-//   const [isRecording, setIsRecording] = useState(false)
-//   const [recorder, setRecorder] = useState(null)
 
-//   useEffect(() => {
-//     // Lazily obtain recorder first time we're recording.
-//     if (recorder === null) {
-//       if (isRecording) {
-//         requestRecorder().then(setRecorder, console.error)
-//       }
-//       return
-//     }
-
-//     // Manage recorder state.
-//     if (isRecording) {
-//       recorder.start()
-//     } else {
-//       recorder.stop()
-//     }
-
-//     // Obtain the audio when ready.
-//     const handleData = e => {
-//       console.log(URL.createObjectURL(e.data))
-//       setAudioURL(URL.createObjectURL(e.data))
-//     }
-
-//     recorder.addEventListener('dataavailable', handleData)
-//     return () => recorder.removeEventListener('dataavailable', handleData)
-//   }, [recorder, isRecording])
-
-//   const startRecording = () => {
-//     setIsRecording(true)
-//   }
-
-//   const stopRecording = () => {
-//     setIsRecording(false)
-//   }
-
-//   return [audioURL, isRecording, startRecording, stopRecording]
-// }
-
-// async function requestRecorder () {
-//   if (navigator.mediaDevices.getUserMedia === undefined) {
-//     navigator.mediaDevices.getUserMedia = function(constraints) {
-
-//       // First get ahold of the legacy getUserMedia, if present
-//       var getUserMedia = navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
-
-//       // Some browsers just don't implement it - return a rejected promise with an error
-//       // to keep a consistent interface
-//       if (!getUserMedia) {
-//         return Promise.reject(new Error('getUserMedia is not implemented in this browser'));
-//       }
-
-//       // Otherwise, wrap the call to the old navigator.getUserMedia with a Promise
-//       return new Promise(function(resolve, reject) {
-//         getUserMedia.call(navigator, constraints, resolve, reject);
-//       });
-//     }
-//   }
-
-//   const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-
-//   return new MediaRecorder(stream)
-// }
-
-export default function RoomDetail(props) {
+export default function RoomDetail (props) {
   const [room, setRoom] = useState('')
   const [client, setClient] = useState(null)
   const [rtmClient, setRtmClient] = useState(null)
@@ -86,6 +20,7 @@ export default function RoomDetail(props) {
   const { currentUser } = useAuth()
   const [localStream, setLocalStream] = useState('')
   const [localStreams, setLocalStreams] = useState([])
+  const [instance, setinstance] = useState('')
 
   const [recording, setrecording] = useState(false)
 
@@ -93,16 +28,22 @@ export default function RoomDetail(props) {
     audio: false,
     video: false,
     streamID: null,
-    screen: true
+    screen: false
   }
   // let [audioURL, isRecording, startRecording, stopRecording] = useRecorder()
   const handleError = err => {
     console.error(err)
   }
+  // const rtm = new RtmClient()
+
   const createLocalStream = tempClient => {
     const locStream = AgoraRTC.createStream(streamOptions)
+    const rtminstance = AgoraRTM.createInstance(
+      process.env.REACT_APP_AGORA_APP_ID
+    )
     console.log(locStream, 'new stream is this')
     setLocalStream(locStream)
+    console.log(rtminstance, 'new instance of rtm')
     locStream.init(() => {
       tempClient.publish(locStream, handleError)
     }, handleError)
@@ -172,14 +113,14 @@ export default function RoomDetail(props) {
     })
 
     tempClient.join(
-      '006b99b87affd9948e19aa9e4a01e86ac66IAAXGbq8iqKa4hsoHW7gDPo6pVhzYWxagExxKHSOKhilmYaHNMoAAAAAEADsTG0XMtGYYQEAAQAx0Zhh',
+      '006b99b87affd9948e19aa9e4a01e86ac66IADBjUsTP/S38hFwEiFVLl6r1hKFGmoC4oXGB/GquhgVmYaHNMoAAAAAEAAtPj4LY1SbYQEAAQBiVJth',
       'newdev',
       null,
       null,
       uid => {
         setCurrentUserId(uid)
         setLocalStreams([...localStreams, uid])
-        console.log({ localStreams });
+        console.log({ localStreams })
         // Create a local stream
         console.log(tempRole, 'is this')
         // if (tempRole == "host") {
@@ -232,7 +173,7 @@ export default function RoomDetail(props) {
       key: newUser.uid,
       agoraId
     }
-    reference.set(online).then(() => { })
+    reference.set(online).then(() => {})
 
     reference
       .onDisconnect()
@@ -258,7 +199,6 @@ export default function RoomDetail(props) {
               onlineUsersList.push({ ...onlineUsers[id], id: id })
             }
             setOnlineUsers(onlineUsersList)
-
           })
         }
       }
@@ -306,7 +246,6 @@ export default function RoomDetail(props) {
 
   // useEffect(() => {
 
-
   // }, [currentUserId])
   const handleRecordStart = async () => {
     recordAcquire(currentUserId).then(val => {
@@ -318,22 +257,22 @@ export default function RoomDetail(props) {
   }
   const handleRecordStop = async () => {
     try {
-      recordQuery(sid).then(async d1 => {
-        console.warn(d1)
-        let data = await recordStop(sid, currentUserId)
-        console.log(data);
-        setrecording(false)
-        return data
-      }).catch(error => {
-        console.error(error)
-        setrecording(false)
-      }
-      )
+      recordQuery(sid)
+        .then(async d1 => {
+          console.warn(d1)
+          let data = await recordStop(sid, currentUserId)
+          console.log(data)
+          setrecording(false)
+          return data
+        })
+        .catch(error => {
+          console.error(error)
+          setrecording(false)
+        })
     } catch (error) {
       console.error(error)
       setrecording(false)
     }
-
   }
   return (
     <div id='roomSection' className={style.roomsSection}>
@@ -347,7 +286,6 @@ export default function RoomDetail(props) {
           {onlineUsers ? (
             onlineUsers.map(item => (
               <>
-
                 <li
                   className='d-flex align-items-center justify-content-between'
                   style={{ cursir: 'pointer' }}
@@ -366,12 +304,8 @@ export default function RoomDetail(props) {
           )}
         </ul>
       </div>
-      {!recording && <button onClick={handleRecordStart}>
-        Start
-      </button>}
-      {recording && <button onClick={handleRecordStop}>
-        Stop
-      </button>}
+      {!recording && <button onClick={handleRecordStart}>Start</button>}
+      {recording && <button onClick={handleRecordStop}>Stop</button>}
     </div>
   )
 }
