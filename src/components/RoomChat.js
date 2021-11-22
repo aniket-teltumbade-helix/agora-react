@@ -1,12 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import style from '../styles/rooms.module.css'
-import firebase from '../firebase'
-import { Link, useHistory, useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { Spinner } from 'react-bootstrap'
 import AgoraRTM from 'agora-rtm-sdk'
-import { v4 } from 'uuid'
-import random from 'random'
 import axios from 'axios'
 
 export default function RoomChat ({ room, onlineUsers, currentUserId }) {
@@ -20,6 +17,7 @@ export default function RoomChat ({ room, onlineUsers, currentUserId }) {
   const [localStream, setLocalStream] = useState('')
 
   const [rtmClient, setrtmClient] = useState()
+  const [channel, setchannel] = useState()
 
   // let [audioURL, isRecording, startRecording, stopRecording] = useRecorder()
   // const rtm = new RtmClient()
@@ -55,73 +53,43 @@ export default function RoomChat ({ room, onlineUsers, currentUserId }) {
   //   if (room && currentUserId) setUidOfUser(room.id, currentUser, currentUserId)
   // }, [room, currentUserId])
 
-  const createInstance = async () => {
-    let data = await AgoraRTM.createInstance(process.env.REACT_APP_AGORA_APP_ID)
-    setrtmClient(data)
-  }
   useEffect(() => {
-    createInstance()
     // return () => {
     //   cleanup
     // }
   }, [])
-  // useEffect(() => {
-  //   const roomRef = firebase.database().ref('rooms')
-  //   roomRef.on('value', snapshot => {
-  //     const rooms = snapshot.val()
-  //     for (let id in rooms) {
-  //       if (id == url[2]) {
-  //         setRoom({ ...rooms[id], id })
-  //         setUserRole(currentUser.email == rooms[id].host ? 'host' : 'audience')
-  //         console.log('setUserRole', currentUser)
-  //         createInstance()
-  //         const onlineRef = firebase.database().ref(`/online/${id}`)
-  //         onlineRef.on('value', snapshot => {
-  //           const onlineUsers = snapshot.val()
-  //           const onlineUsersList = []
-  //           for (let id in onlineUsers) {
-  //             onlineUsersList.push({ ...onlineUsers[id], id: id })
-  //           }
-  //           setOnlineUsers(onlineUsersList)
-  //         })
-  //       }
-  //     }
-  //   })
-  //   return () => {
-  //     leaveRoom()
-  //   }
-  // }, [])
-
-  // const setPresenceOffline = () => {
-  //   setRoom(room => {
-  //     firebase
-  //       .database()
-  //       .ref(`/online/${room.id}/${currentUser.uid}`)
-  //       .remove()
-  //     return room
-  //   })
-  // }
+  
   const login = async () => {}
+
+const sendMessageToChannel= async () => {
+  channel.sendMessage({text: 'test channel message'}).then((data) => {
+    console.log(data);
+  })
+}
+
   const startChannel = async () => {
-    if (rtmClient && currentUserId) {
+    let clientRtm = await AgoraRTM.createInstance(process.env.REACT_APP_AGORA_APP_ID)
+    setrtmClient(clientRtm)
+    if (currentUserId) {
       let uid = currentUserId.toString()
       let token = await (
         await axios(`http://localhost:8080/rtmToken?account=${uid}`)
       ).data.key
       console.log({ token })
-      rtmClient
+      clientRtm
         .login({
           uid,
           token
         })
-        .then(val1 => {
+        .then(async val1 => {
           console.log({ val1 })
+          const channel = await clientRtm.createChannel('latest')
+          channel.join()
+          setchannel(channel)
         })
         .catch(err => {
           console.error(currentUserId, { err })
         })
-      // const channel = await rtmClient.createChannel('latest1')
-      // channel.join()
       // console.log('hey!!!!!!!!!', rtmClient, channel)
     }
     // const channel = rtmClient.createChannel('newdev')
@@ -133,7 +101,7 @@ export default function RoomChat ({ room, onlineUsers, currentUserId }) {
     // return () => {
     //   cleanup
     // }
-  }, [rtmClient, currentUserId])
+  }, [currentUserId])
   const sendMessageToPeer = () => {}
 
   // useEffect(() => {
@@ -176,6 +144,7 @@ export default function RoomChat ({ room, onlineUsers, currentUserId }) {
             <Spinner animation='border' />
           )}
         </ul>
+        <button onClick={()=>sendMessageToChannel()}>Send</button>
       </div>
     </div>
   )

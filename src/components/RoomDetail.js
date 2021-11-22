@@ -39,12 +39,8 @@ export default function RoomDetail (props) {
 
   const createLocalStream = tempClient => {
     const locStream = AgoraRTC.createStream(streamOptions)
-    const rtminstance = AgoraRTM.createInstance(
-      process.env.REACT_APP_AGORA_APP_ID
-    )
     console.log(locStream, 'new stream is this')
     setLocalStream(locStream)
-    console.log(rtminstance, 'new instance of rtm')
     locStream.init(() => {
       tempClient.publish(locStream, handleError)
     }, handleError)
@@ -114,8 +110,8 @@ export default function RoomDetail (props) {
     })
 
     tempClient.join(
-      '006b99b87affd9948e19aa9e4a01e86ac66IADBjUsTP/S38hFwEiFVLl6r1hKFGmoC4oXGB/GquhgVmYaHNMoAAAAAEAAtPj4LY1SbYQEAAQBiVJth',
-      'newdev',
+      '006b99b87affd9948e19aa9e4a01e86ac66IABlRqzWZRHa7+XubqVGeCbzPsqG7jjCvoAVccREXzTE92+RnZMAAAAAEADsTG0XHaicYQEAAQAeqJxh',
+      'latest',
       null,
       null,
       uid => {

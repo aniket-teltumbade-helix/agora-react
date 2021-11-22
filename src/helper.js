@@ -4,7 +4,7 @@ const Authorization = `Basic ${Buffer.from(
 ).toString('base64')}`
 exports.recordAcquire = async RecordingUID => {
   var data = JSON.stringify({
-    cname: 'newdev',
+    cname: 'latest',
     uid: `${RecordingUID}`,
     clientRequest: {
       resourceExpiredHour: 72
@@ -25,11 +25,11 @@ exports.recordAcquire = async RecordingUID => {
 }
 exports.recordStart = async (RecordingUID, resourceId) => {
   var data = {
-    cname: 'newdev',
+    cname: 'latest',
     uid: `${RecordingUID}`,
     clientRequest: {
       token:
-        '006b99b87affd9948e19aa9e4a01e86ac66IADBjUsTP/S38hFwEiFVLl6r1hKFGmoC4oXGB/GquhgVmYaHNMoAAAAAEAAtPj4LY1SbYQEAAQBiVJth',
+        '006b99b87affd9948e19aa9e4a01e86ac66IABlRqzWZRHa7+XubqVGeCbzPsqG7jjCvoAVccREXzTE92+RnZMAAAAAEADsTG0XHaicYQEAAQAeqJxh',
       recordingConfig: {
         maxIdleTime: 120,
         streamTypes: 3,
@@ -68,7 +68,7 @@ exports.recordStop = async (body, uid) => {
       Authorization
     },
     data: {
-      cname: 'newdev',
+      cname: 'latest',
       uid: `${uid}`,
       clientRequest: {
         async_stop: true
