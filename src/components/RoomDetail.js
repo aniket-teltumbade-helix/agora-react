@@ -7,6 +7,7 @@ import AgoraRTC from 'agora-rtc-sdk'
 import { Spinner } from 'react-bootstrap'
 import AgoraRTM from 'agora-rtm-sdk'
 import { recordAcquire, recordQuery, recordStart, recordStop } from '../helper'
+import RoomChat from './RoomChat'
 
 export default function RoomDetail (props) {
   const [room, setRoom] = useState('')
@@ -275,37 +276,44 @@ export default function RoomDetail (props) {
     }
   }
   return (
-    <div id='roomSection' className={style.roomsSection}>
-      <div className='d-flex align-items-center justify-content-between'>
-        {' '}
-        <h3 className='mb-0'>{room.title}</h3>{' '}
-        <p className='mb-0'>{userRole}</p>
+    <>
+      <div id='roomSection' className={style.roomsSection}>
+        <div className='d-flex align-items-center justify-content-between'>
+          {' '}
+          <h3 className='mb-0'>{room.title}</h3>{' '}
+          <p className='mb-0'>{userRole}</p>
+        </div>
+        <div className='mt-5'>
+          <ul>
+            {onlineUsers ? (
+              onlineUsers.map(item => (
+                <>
+                  <li
+                    className='d-flex align-items-center justify-content-between'
+                    style={{ cursir: 'pointer' }}
+                    onClick={() => sendMessageToPeer(item.agoraId)}
+                  >
+                    <span>{item.displayName}</span>
+                    <span>{item.agoraId}</span>
+                    <span>
+                      {item.displayName == room.host ? 'Host' : 'Audience'}
+                    </span>
+                  </li>
+                </>
+              ))
+            ) : (
+              <Spinner animation='border' />
+            )}
+          </ul>
+        </div>
+        {!recording && <button onClick={handleRecordStart}>Start</button>}
+        {recording && <button onClick={handleRecordStop}>Stop</button>}
       </div>
-      <div className='mt-5'>
-        <ul>
-          {onlineUsers ? (
-            onlineUsers.map(item => (
-              <>
-                <li
-                  className='d-flex align-items-center justify-content-between'
-                  style={{ cursir: 'pointer' }}
-                  onClick={() => sendMessageToPeer(item.agoraId)}
-                >
-                  <span>{item.displayName}</span>
-                  <span>{item.agoraId}</span>
-                  <span>
-                    {item.displayName == room.host ? 'Host' : 'Audience'}
-                  </span>
-                </li>
-              </>
-            ))
-          ) : (
-            <Spinner animation='border' />
-          )}
-        </ul>
-      </div>
-      {!recording && <button onClick={handleRecordStart}>Start</button>}
-      {recording && <button onClick={handleRecordStop}>Stop</button>}
-    </div>
+      <RoomChat
+        room={room}
+        currentUserId={currentUserId}
+        onlineUsers={onlineUsers}
+      />
+    </>
   )
 }

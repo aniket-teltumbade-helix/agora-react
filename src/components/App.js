@@ -23,7 +23,7 @@ function App () {
           <AuthProvider>
             <Switch>
               <PrivateRoute exact path='/' component={Rooms} />
-              <PrivateRoute path='/roomdetail/:id' component={RoomChat} />
+              <PrivateRoute path='/roomdetail/:id' component={RoomDetail} />
               <Route path='/signup' component={Signup} />
               <Route path='/login' component={Login} />
               <Route path='/forgot-password' component={ForgotPassword} />

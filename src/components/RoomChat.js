@@ -7,11 +7,12 @@ import { Spinner } from 'react-bootstrap'
 import AgoraRTM from 'agora-rtm-sdk'
 import { v4 } from 'uuid'
 import random from 'random'
+import axios from 'axios'
 
-export default function RoomChat (props) {
-  const [room, setRoom] = useState('')
-  const [onlineUsers, setOnlineUsers] = useState()
-  const [currentUserId, setCurrentUserId] = useState()
+export default function RoomChat ({ room, onlineUsers, currentUserId }) {
+  // const [room, setRoom] = useState('')
+  // const [onlineUsers, setOnlineUsers] = useState()
+  // const [currentUserId, setCurrentUserId] = useState()
   const [userRole, setUserRole] = useState('')
   const location = useLocation()
   const url = location.pathname.split('/')
@@ -23,96 +24,105 @@ export default function RoomChat (props) {
   // let [audioURL, isRecording, startRecording, stopRecording] = useRecorder()
   // const rtm = new RtmClient()
 
-  const leaveRoom = () => {
-    setPresenceOffline()
-    if (localStream) {
-      localStream.stop()
-      localStream.close()
-    }
-    props.history.push('/')
-  }
+  // const leaveRoom = () => {
+  //   setPresenceOffline()
+  //   if (localStream) {
+  //     localStream.stop()
+  //     localStream.close()
+  //   }
+  //   props.history.push('/')
+  // }
 
-  const setUidOfUser = (roomId, newUser, agoraId) => {
-    const reference = firebase
-      .database()
-      .ref(`/online/${roomId}/${newUser.uid}`)
-    const online = {
-      displayName: newUser.email,
-      date: new Date().getTime(),
-      key: newUser.uid,
-      agoraId
-    }
-    reference.set(online).then(() => {})
+  // const setUidOfUser = (roomId, newUser, agoraId) => {
+  //   const reference = firebase
+  //     .database()
+  //     .ref(`/online/${roomId}/${newUser.uid}`)
+  //   const online = {
+  //     displayName: newUser.email,
+  //     date: new Date().getTime(),
+  //     key: newUser.uid,
+  //     agoraId
+  //   }
+  //   reference.set(online).then(() => {})
 
-    reference
-      .onDisconnect()
-      .remove()
-      .then(() => console.log('On disconnect configured'))
-  }
+  //   reference
+  //     .onDisconnect()
+  //     .remove()
+  //     .then(() => console.log('On disconnect configured'))
+  // }
 
-  useEffect(() => {
-    if (room && currentUserId) setUidOfUser(room.id, currentUser, currentUserId)
-  }, [room, currentUserId])
+  // useEffect(() => {
+  //   if (room && currentUserId) setUidOfUser(room.id, currentUser, currentUserId)
+  // }, [room, currentUserId])
 
   const createInstance = async () => {
     let data = await AgoraRTM.createInstance(process.env.REACT_APP_AGORA_APP_ID)
     setrtmClient(data)
   }
-
   useEffect(() => {
-    const roomRef = firebase.database().ref('rooms')
-    roomRef.on('value', snapshot => {
-      const rooms = snapshot.val()
-      for (let id in rooms) {
-        if (id == url[2]) {
-          setRoom({ ...rooms[id], id })
-          setUserRole(currentUser.email == rooms[id].host ? 'host' : 'audience')
-          console.log('setUserRole', currentUser)
-          createInstance()
-          const onlineRef = firebase.database().ref(`/online/${id}`)
-          onlineRef.on('value', snapshot => {
-            const onlineUsers = snapshot.val()
-            const onlineUsersList = []
-            for (let id in onlineUsers) {
-              onlineUsersList.push({ ...onlineUsers[id], id: id })
-            }
-            setOnlineUsers(onlineUsersList)
-          })
-        }
-      }
-    })
-    return () => {
-      leaveRoom()
-    }
+    createInstance()
+    // return () => {
+    //   cleanup
+    // }
   }, [])
+  // useEffect(() => {
+  //   const roomRef = firebase.database().ref('rooms')
+  //   roomRef.on('value', snapshot => {
+  //     const rooms = snapshot.val()
+  //     for (let id in rooms) {
+  //       if (id == url[2]) {
+  //         setRoom({ ...rooms[id], id })
+  //         setUserRole(currentUser.email == rooms[id].host ? 'host' : 'audience')
+  //         console.log('setUserRole', currentUser)
+  //         createInstance()
+  //         const onlineRef = firebase.database().ref(`/online/${id}`)
+  //         onlineRef.on('value', snapshot => {
+  //           const onlineUsers = snapshot.val()
+  //           const onlineUsersList = []
+  //           for (let id in onlineUsers) {
+  //             onlineUsersList.push({ ...onlineUsers[id], id: id })
+  //           }
+  //           setOnlineUsers(onlineUsersList)
+  //         })
+  //       }
+  //     }
+  //   })
+  //   return () => {
+  //     leaveRoom()
+  //   }
+  // }, [])
 
-  const setPresenceOffline = () => {
-    setRoom(room => {
-      firebase
-        .database()
-        .ref(`/online/${room.id}/${currentUser.uid}`)
-        .remove()
-      return room
-    })
-  }
+  // const setPresenceOffline = () => {
+  //   setRoom(room => {
+  //     firebase
+  //       .database()
+  //       .ref(`/online/${room.id}/${currentUser.uid}`)
+  //       .remove()
+  //     return room
+  //   })
+  // }
   const login = async () => {}
   const startChannel = async () => {
-    if (rtmClient) {
+    if (rtmClient && currentUserId) {
+      let uid = currentUserId.toString()
+      let token = await (
+        await axios(`http://localhost:8080/rtmToken?account=${uid}`)
+      ).data.key
+      console.log({ token })
       rtmClient
         .login({
-          uid: v4(3),
-          token:
-            '006b99b87affd9948e19aa9e4a01e86ac66IABJ4vzN/JY+3vB+mEOGGX/csq3g018K7rTTdLEyqMaXo+8OQl4AAAAAEAAtPj4LF8ObYQEAAQAXw5th'
+          uid,
+          token
         })
         .then(val1 => {
           console.log({ val1 })
         })
         .catch(err => {
-          console.error({ err })
+          console.error(currentUserId, { err })
         })
-      const channel = await rtmClient.createChannel('latest1')
-      channel.join()
-      console.log('hey!!!!!!!!!', rtmClient, channel)
+      // const channel = await rtmClient.createChannel('latest1')
+      // channel.join()
+      // console.log('hey!!!!!!!!!', rtmClient, channel)
     }
     // const channel = rtmClient.createChannel('newdev')
     // const value = await channel.join()
@@ -123,7 +133,7 @@ export default function RoomChat (props) {
     // return () => {
     //   cleanup
     // }
-  }, [rtmClient])
+  }, [rtmClient, currentUserId])
   const sendMessageToPeer = () => {}
 
   // useEffect(() => {
