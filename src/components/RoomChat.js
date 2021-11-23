@@ -1,181 +1,117 @@
-import React, { useEffect, useState } from 'react'
-import style from '../styles/rooms.module.css'
-import firebase from '../firebase'
-import { Link, useHistory, useLocation } from 'react-router-dom'
-import { useAuth } from '../contexts/AuthContext'
-import { Spinner } from 'react-bootstrap'
+import React, { useEffect, useRef, useState } from 'react'
 import AgoraRTM from 'agora-rtm-sdk'
-import { v4 } from 'uuid'
-import random from 'random'
 import axios from 'axios'
 
-export default function RoomChat ({ room, onlineUsers, currentUserId }) {
-  // const [room, setRoom] = useState('')
-  // const [onlineUsers, setOnlineUsers] = useState()
-  // const [currentUserId, setCurrentUserId] = useState()
-  const [userRole, setUserRole] = useState('')
-  const location = useLocation()
-  const url = location.pathname.split('/')
-  const { currentUser } = useAuth()
-  const [localStream, setLocalStream] = useState('')
-
-  const [rtmClient, setrtmClient] = useState()
-
-  // let [audioURL, isRecording, startRecording, stopRecording] = useRecorder()
-  // const rtm = new RtmClient()
-
-  // const leaveRoom = () => {
-  //   setPresenceOffline()
-  //   if (localStream) {
-  //     localStream.stop()
-  //     localStream.close()
-  //   }
-  //   props.history.push('/')
-  // }
-
-  // const setUidOfUser = (roomId, newUser, agoraId) => {
-  //   const reference = firebase
-  //     .database()
-  //     .ref(`/online/${roomId}/${newUser.uid}`)
-  //   const online = {
-  //     displayName: newUser.email,
-  //     date: new Date().getTime(),
-  //     key: newUser.uid,
-  //     agoraId
-  //   }
-  //   reference.set(online).then(() => {})
-
-  //   reference
-  //     .onDisconnect()
-  //     .remove()
-  //     .then(() => console.log('On disconnect configured'))
-  // }
-
-  // useEffect(() => {
-  //   if (room && currentUserId) setUidOfUser(room.id, currentUser, currentUserId)
-  // }, [room, currentUserId])
-
-  const createInstance = async () => {
-    let data = await AgoraRTM.createInstance(process.env.REACT_APP_AGORA_APP_ID)
-    setrtmClient(data)
-  }
-  useEffect(() => {
-    createInstance()
-    // return () => {
-    //   cleanup
-    // }
-  }, [])
-  // useEffect(() => {
-  //   const roomRef = firebase.database().ref('rooms')
-  //   roomRef.on('value', snapshot => {
-  //     const rooms = snapshot.val()
-  //     for (let id in rooms) {
-  //       if (id == url[2]) {
-  //         setRoom({ ...rooms[id], id })
-  //         setUserRole(currentUser.email == rooms[id].host ? 'host' : 'audience')
-  //         console.log('setUserRole', currentUser)
-  //         createInstance()
-  //         const onlineRef = firebase.database().ref(`/online/${id}`)
-  //         onlineRef.on('value', snapshot => {
-  //           const onlineUsers = snapshot.val()
-  //           const onlineUsersList = []
-  //           for (let id in onlineUsers) {
-  //             onlineUsersList.push({ ...onlineUsers[id], id: id })
-  //           }
-  //           setOnlineUsers(onlineUsersList)
-  //         })
-  //       }
-  //     }
-  //   })
-  //   return () => {
-  //     leaveRoom()
-  //   }
-  // }, [])
-
-  // const setPresenceOffline = () => {
-  //   setRoom(room => {
-  //     firebase
-  //       .database()
-  //       .ref(`/online/${room.id}/${currentUser.uid}`)
-  //       .remove()
-  //     return room
-  //   })
-  // }
-  const login = async () => {}
-  const startChannel = async () => {
-    if (rtmClient && currentUserId) {
-      let uid = currentUserId.toString()
-      let token = await (
-        await axios(`http://localhost:8080/rtmToken?account=${uid}`)
-      ).data.key
-      console.log({ token })
-      rtmClient
-        .login({
-          uid,
-          token
-        })
-        .then(val1 => {
-          console.log({ val1 })
-        })
-        .catch(err => {
-          console.error(currentUserId, { err })
-        })
-      // const channel = await rtmClient.createChannel('latest1')
-      // channel.join()
-      // console.log('hey!!!!!!!!!', rtmClient, channel)
+export const useAgoraRtm = (uid, client, userName) => {
+  const [messages, setMessages] = useState([])
+  const channel = useRef(client.createChannel('channelId')).current
+  const initRtm = async () => {
+    if (uid && userName) {
+      axios(`http://localhost:8080/rtmToken?account=${uid}`).then(
+        async result => {
+          client
+            .login({
+              uid: uid.toString(),
+              token: result.data.key
+            })
+            .then(async value => {
+              console.log(value)
+              await channel.join()
+              await client.setLocalUserAttributes({
+                name: userName
+              })
+            })
+            .catch(err => {
+              console.error(err)
+            })
+        }
+      )
     }
-    // const channel = rtmClient.createChannel('newdev')
-    // const value = await channel.join()
-    // console.log({ channel: value })
   }
   useEffect(() => {
-    startChannel()
-    // return () => {
-    //   cleanup
-    // }
-  }, [rtmClient, currentUserId])
-  const sendMessageToPeer = () => {}
+    initRtm()
+    // eslint-disable-next-line consistent-return
+  }, [uid, userName])
 
-  // useEffect(() => {
+  useEffect(() => {
+    channel.on('ChannelMessage', (data, uid) => {
+      handleMessageReceived(data, uid)
+    })
+  }, [])
+  const handleMessageReceived = async (data, uid) => {
+    const user = await client.getUserAttributes(uid)
+    if (data.messageType === 'TEXT') {
+      const newMessageData = { user, message: data.text }
+      setCurrentMessage(newMessageData)
+    }
+  }
 
-  // }, [currentUserId])
-  console.log({
-    // room,
-    onlineUsers,
-    // currentUserId,
-    // userRole,
-    // localStream,
-    rtmClient
-  })
+  const [currentMessage, setCurrentMessage] = useState()
+  const sendChannelMessage = async text => {
+    channel
+      .sendMessage({ text })
+      .then(() => {
+        console.error(userName)
+        setCurrentMessage({
+          user: { name: 'Current User (Me)' },
+          message: text
+        })
+      })
+      .catch(error => {
+        console.log(error, userName, uid)
+      })
+  }
+
+  useEffect(() => {
+    if (currentMessage) setMessages([...messages, currentMessage])
+  }, [currentMessage])
+
+  return { sendChannelMessage, messages }
+}
+
+const client = AgoraRTM.createInstance(process.env.REACT_APP_AGORA_APP_ID)
+
+export default function RoomChat ({
+  room,
+  onlineUsers,
+  currentUserId,
+  currentUser
+}) {
+  const [textArea, setTextArea] = useState('')
+  const { messages, sendChannelMessage } = useAgoraRtm(
+    currentUserId,
+    client,
+    currentUser
+  )
+  const submitMessage = e => {
+    if (e.charCode === 13) {
+      e.preventDefault()
+      if (textArea.trim().length === 0) return
+      sendChannelMessage(e.currentTarget.value)
+      setTextArea('')
+    }
+  }
   return (
-    <div id='roomSection' className={style.roomsSection}>
-      <div className='d-flex align-items-center justify-content-between'>
-        {' '}
-        <h3 className='mb-0'>{room.title}</h3>{' '}
-        <p className='mb-0'>{userRole}</p>
+    <div className='App'>
+      <div className='d-flex flex-column py-5 px-3'>
+        {messages.map((data, index) => {
+          return (
+            <div className='row' key={`chat${index + 1}`}>
+              <h5 className='font-size-15'>{`${data.user.name} :`}</h5>
+              <p className='text-break'>{` ${data.message}`}</p>
+            </div>
+          )
+        })}
       </div>
-      <div className='mt-5'>
-        <ul>
-          {onlineUsers ? (
-            onlineUsers.map(item => (
-              <>
-                <li
-                  className='d-flex align-items-center justify-content-between'
-                  style={{ cursir: 'pointer' }}
-                  onClick={() => sendMessageToPeer(item.agoraId)}
-                >
-                  <span>{item.displayName}</span>
-                  <span>{item.agoraId}</span>
-                  <span>
-                    {item.displayName == room.host ? 'Host' : 'Audience'}
-                  </span>
-                </li>
-              </>
-            ))
-          ) : (
-            <Spinner animation='border' />
-          )}
-        </ul>
+      <div>
+        <textarea
+          placeholder='Type your message here'
+          className='form-control'
+          onChange={e => setTextArea(e.target.value)}
+          aria-label='With textarea'
+          value={textArea}
+          onKeyPress={submitMessage}
+        />
       </div>
     </div>
   )
