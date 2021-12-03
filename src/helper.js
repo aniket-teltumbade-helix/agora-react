@@ -4,7 +4,7 @@ const Authorization = `Basic ${Buffer.from(
 ).toString('base64')}`
 exports.recordAcquire = async RecordingUID => {
   var data = JSON.stringify({
-    cname: 'latest',
+    cname: 'HPANDGOF',
     uid: `${RecordingUID}`,
     clientRequest: {
       resourceExpiredHour: 72
@@ -25,11 +25,11 @@ exports.recordAcquire = async RecordingUID => {
 }
 exports.recordStart = async (RecordingUID, resourceId) => {
   var data = {
-    cname: 'latest',
+    cname: 'HPANDGOF',
     uid: `${RecordingUID}`,
     clientRequest: {
       token:
-        '006b99b87affd9948e19aa9e4a01e86ac66IABlRqzWZRHa7+XubqVGeCbzPsqG7jjCvoAVccREXzTE92+RnZMAAAAAEADsTG0XHaicYQEAAQAeqJxh',
+        '006b99b87affd9948e19aa9e4a01e86ac66IACQJR9PzS/T8EtJLIa/Cc9odtPZs12QS8jXucnxey9fKCcztRYAAAAAEACtOxo0jPWpYQEAAQCM9alh',
       recordingConfig: {
         maxIdleTime: 120,
         streamTypes: 3,
@@ -37,11 +37,11 @@ exports.recordStart = async (RecordingUID, resourceId) => {
         subscribeUidGroup: 2
       },
       storageConfig: {
-        vendor: 2,
-        region: 13,
-        bucket: 'audioone2',
-        accessKey: 'LTAI5t93eqmFqbC7RKwZF1KR',
-        secretKey: 'NzlnCmNlBpFihDsW9ChRW8LLvWi437',
+        vendor: 1,
+        region: 14,
+        bucket: 'audioone-helix-agora1',
+        accessKey: 'AKIAVEK5CCCXB247FFC7',
+        secretKey: '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',
         fileNamePrefix: [`${RecordingUID}`]
       }
     }
@@ -68,7 +68,7 @@ exports.recordStop = async (body, uid) => {
       Authorization
     },
     data: {
-      cname: 'latest',
+      cname: 'HPANDGOF',
       uid: `${uid}`,
       clientRequest: {
         async_stop: true

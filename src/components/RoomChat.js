@@ -1,12 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react'
 import AgoraRTM from 'agora-rtm-sdk'
 import axios from 'axios'
+import { useAuth } from '../contexts/AuthContext'
 
 export const useAgoraRtm = (uid, client, userName) => {
   const [messages, setMessages] = useState([])
-  const channel = useRef(client.createChannel('channelId')).current
+  const room = window.location.pathname.split('-')[1]
+  console.log({ uid, client, userName, room })
+  const channel = useRef(client.createChannel(room)).current
   const initRtm = async () => {
     if (uid && userName) {
+      // Beackend api to retrieve dynamic key
       axios(`http://localhost:8080/rtmToken?account=${uid}`).then(
         async result => {
           client
@@ -31,7 +35,7 @@ export const useAgoraRtm = (uid, client, userName) => {
   useEffect(() => {
     initRtm()
     // eslint-disable-next-line consistent-return
-  }, [uid, userName])
+  }, [])
 
   useEffect(() => {
     channel.on('ChannelMessage', (data, uid) => {
@@ -71,17 +75,14 @@ export const useAgoraRtm = (uid, client, userName) => {
 
 const client = AgoraRTM.createInstance(process.env.REACT_APP_AGORA_APP_ID)
 
-export default function RoomChat ({
-  room,
-  onlineUsers,
-  currentUserId,
-  currentUser
-}) {
+export default function RoomChat () {
   const [textArea, setTextArea] = useState('')
+  const { currentUser } = useAuth()
+
   const { messages, sendChannelMessage } = useAgoraRtm(
-    currentUserId,
+    currentUser.uid,
     client,
-    currentUser
+    currentUser.email
   )
   const submitMessage = e => {
     if (e.charCode === 13) {
@@ -92,17 +93,7 @@ export default function RoomChat ({
     }
   }
   return (
-    <div className='App'>
-      <div className='d-flex flex-column py-5 px-3'>
-        {messages.map((data, index) => {
-          return (
-            <div className='row' key={`chat${index + 1}`}>
-              <h5 className='font-size-15'>{`${data.user.name} :`}</h5>
-              <p className='text-break'>{` ${data.message}`}</p>
-            </div>
-          )
-        })}
-      </div>
+    <div>
       <div>
         <textarea
           placeholder='Type your message here'
@@ -112,6 +103,16 @@ export default function RoomChat ({
           value={textArea}
           onKeyPress={submitMessage}
         />
+      </div>
+      <div className='d-flex flex-column py-5'>
+        {messages.map((data, index) => {
+          return (
+            <div className='row' key={`chat${index + 1}`}>
+              <h5 className='font-size-15'>{`${data.user.name} :`}</h5>
+              <p className='text-break'>{` ${data.message}`}</p>
+            </div>
+          )
+        })}
       </div>
     </div>
   )

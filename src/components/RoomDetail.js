@@ -1,44 +1,61 @@
-import React, { useEffect, useState } from 'react'
-import style from '../styles/rooms.module.css'
+import React, { useState, useEffect, useRef } from 'react'
+import RoomAudio from './RoomAudio'
+import RoomChat from './RoomChat'
+import RoomScreenSharing from './RoomScrenSharing'
 import firebase from '../firebase'
-import { Link, useHistory, useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import AgoraRTC from 'agora-rtc-sdk'
-import { Spinner } from 'react-bootstrap'
-import AgoraRTM from 'agora-rtm-sdk'
 import { recordAcquire, recordQuery, recordStart, recordStop } from '../helper'
-import RoomChat from './RoomChat'
 
 export default function RoomDetail (props) {
   const [room, setRoom] = useState('')
   const [client, setClient] = useState(null)
-  const [rtmClient, setRtmClient] = useState(null)
   const [onlineUsers, setOnlineUsers] = useState()
   const [currentUserId, setCurrentUserId] = useState()
   const [userRole, setUserRole] = useState('')
   const location = useLocation()
   const url = location.pathname.split('/')
   const { currentUser } = useAuth()
-  const [localStream, setLocalStream] = useState('')
+  const [localStream, setLocalStream] = useState()
   const [localStreams, setLocalStreams] = useState([])
-  const [instance, setinstance] = useState('')
 
-  const [recording, setrecording] = useState(false)
+  const player = useRef()
 
   let streamOptions = {
-    audio: false,
+    audio: true,
     video: false,
     streamID: null,
     screen: false
   }
+  let tempClient = AgoraRTC.createClient({
+    mode: 'live',
+    codec: 'vp8'
+  })
+  const [recording, setrecording] = useState(false)
+
   // let [audioURL, isRecording, startRecording, stopRecording] = useRecorder()
   const handleError = err => {
     console.error(err)
   }
   // const rtm = new RtmClient()
-
   const createLocalStream = tempClient => {
     const locStream = AgoraRTC.createStream(streamOptions)
+    console.log(locStream, 'new stream is this')
+    setLocalStream(locStream)
+    locStream.init(() => {
+      tempClient.unpublish(locStream, handleError)
+      tempClient.publish(locStream, handleError)
+    }, handleError)
+  }
+
+  const createLocalScreenStream = tempClient => {
+    const locStream = AgoraRTC.createStream({
+      video: false,
+      audio: true,
+      screen: true,
+      screenAudio: true
+    })
     console.log(locStream, 'new stream is this')
     setLocalStream(locStream)
     locStream.init(() => {
@@ -49,9 +66,9 @@ export default function RoomDetail (props) {
   const addStream = elementId => {
     console.log(elementId)
     // Creates a new div for every stream
-    const streamDiv = document.createElement('div')
+    const streamDiv = player.current
     streamDiv.id = elementId
-    const container = document.querySelector('#roomSection')
+    const container = document.querySelector()
 
     container.appendChild(streamDiv)
   }
@@ -96,10 +113,6 @@ export default function RoomDetail (props) {
   }
 
   const joinStream = tempRole => {
-    let tempClient = AgoraRTC.createClient({
-      mode: 'live',
-      codec: 'vp8'
-    })
     tempClient.init(process.env.REACT_APP_AGORA_APP_ID)
     subscribeToStreamStart(tempClient)
     subscribeToStreamStop(tempClient)
@@ -110,8 +123,8 @@ export default function RoomDetail (props) {
     })
 
     tempClient.join(
-      '006b99b87affd9948e19aa9e4a01e86ac66IABlRqzWZRHa7+XubqVGeCbzPsqG7jjCvoAVccREXzTE92+RnZMAAAAAEADsTG0XHaicYQEAAQAeqJxh',
-      'latest',
+      '006b99b87affd9948e19aa9e4a01e86ac66IAAlU8uX4pT5kvA+v6xaDX11UnJlAe16yUc8RDhMYz18jpU2fRgAAAAAEABhVhpznUGqYQEAAQCdQaph',
+      'audio',
       null,
       null,
       uid => {
@@ -120,31 +133,35 @@ export default function RoomDetail (props) {
         console.log({ localStreams })
         // Create a local stream
         console.log(tempRole, 'is this')
-        // if (tempRole == "host") {
         tempClient.setClientRole('host')
         createLocalStream(tempClient)
-        // } else {
-        //   setTimeout(() => {
-        //     tempClient.setClientRole("host");
-        //   }, 10000);
-        // }
+      },
+      handleError
+    )
+  }
+  const joinScreenStream = tempRole => {
+    tempClient.init(process.env.REACT_APP_AGORA_APP_ID)
+    subscribeToStreamStart(tempClient)
+    subscribeToStreamStop(tempClient)
+    setClient(tempClient)
+    streamOptions.streamID = room.id
+    tempClient.on('client-role-changed', (evt, role) => {
+      console.log('User role changed', evt)
+    })
 
-        // Params for login
-        // let options = {
-        //   uid: uid,
-        //   token:
-        //     "00608731afc714841759f4e13d9232f5006IACDQpAlJ1Rv5qgz1eGHo9gVD7FFnBqIizO/1AWov25LVepuE8wAAAAAEAC26B3+YQU3YQEAAQBhBTdh",
-        // };
-        // const tempRtmClient = AgoraRTM.createInstance(
-        //   "08731afc714841759f4e13d9232f5006"
-        // );
-        // tempRtmClient.on("MessageFromPeer", function (message, peerId) {
-        //   console.log("Message from: " + peerId + " Message: " + message);
-        // });
-
-        // tempRtmClient.login(options);
-
-        // setRtmClient(tempRtmClient);
+    tempClient.join(
+      '006b99b87affd9948e19aa9e4a01e86ac66IAAlU8uX4pT5kvA+v6xaDX11UnJlAe16yUc8RDhMYz18jpU2fRgAAAAAEABhVhpznUGqYQEAAQCdQaph',
+      'audio',
+      null,
+      null,
+      uid => {
+        setCurrentUserId(uid)
+        setLocalStreams([...localStreams, uid])
+        console.log({ localStreams })
+        // Create a local stream
+        console.log(tempRole, 'is this')
+        tempClient.setClientRole('host')
+        createLocalScreenStream(tempClient)
       },
       handleError
     )
@@ -219,31 +236,9 @@ export default function RoomDetail (props) {
     })
   }
 
-  const sendMessageToPeer = peerId => {
-    // const peerMessage = "Hey this is a test message from the host";
-    // if (userRole == "host") {
-    //   rtmClient
-    //     .sendMessageToPeer({ text: peerMessage }, peerId)
-    //     .then((sendResult) => {
-    //       if (sendResult.hasPeerReceived) {
-    //         alert(
-    //           "Message has been received by: " +
-    //             peerId +
-    //             " Message: " +
-    //             peerMessage
-    //         );
-    //       } else {
-    //         alert("Message sent to: " + peerId + " Message: " + peerMessage);
-    //       }
-    //     });
-    // } else alert("Audience can not send a message");
-  }
-  const [resourceID, setresourceID] = useState()
+  const sendMessageToPeer = peerId => {}
   const [sid, setsid] = useState([])
 
-  // useEffect(() => {
-
-  // }, [currentUserId])
   const handleRecordStart = async () => {
     recordAcquire(currentUserId).then(val => {
       recordStart(currentUserId, val.data.resourceId).then(val2 => {
@@ -271,48 +266,29 @@ export default function RoomDetail (props) {
       setrecording(false)
     }
   }
+
   return (
-    <>
-      <div id='roomSection' className={style.roomsSection}>
-        <div className='d-flex align-items-center justify-content-between'>
-          {' '}
-          <h3 className='mb-0'>{room.title}</h3>{' '}
-          <p className='mb-0'>{userRole}</p>
-        </div>
-        <div className='mt-5'>
-          <ul>
-            {onlineUsers ? (
-              onlineUsers.map(item => (
-                <>
-                  <li
-                    className='d-flex align-items-center justify-content-between'
-                    style={{ cursir: 'pointer' }}
-                    onClick={() => sendMessageToPeer(item.agoraId)}
-                  >
-                    <span>{item.displayName}</span>
-                    <span>{item.agoraId}</span>
-                    <span>
-                      {item.displayName == room.host ? 'Host' : 'Audience'}
-                    </span>
-                  </li>
-                </>
-              ))
-            ) : (
-              <Spinner animation='border' />
-            )}
-          </ul>
-        </div>
-        {!recording && <button onClick={handleRecordStart}>Start</button>}
-        {recording && <button onClick={handleRecordStop}>Stop</button>}
-      </div>
-      {room && currentUserId && onlineUsers && currentUser && (
-        <RoomChat
-          room={room}
-          currentUserId={currentUserId}
-          onlineUsers={onlineUsers}
-          currentUser={currentUser.email}
-        />
-      )}
-    </>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        maxWidth: '100vw',
+        minHeight: '100vh'
+      }}
+    >
+      <RoomAudio
+        room={room}
+        userRole={userRole}
+        onlineUsers={onlineUsers}
+        sendMessageToPeer={sendMessageToPeer}
+        recording={recording}
+        handleRecordStart={handleRecordStart}
+        handleRecordStop={handleRecordStop}
+      />
+      <button onClick={() => joinScreenStream('host')}>Start</button>
+      <RoomChat player={player} />
+      <RoomScreenSharing />
+    </div>
   )
 }
